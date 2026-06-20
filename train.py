@@ -85,8 +85,36 @@ def _save_model_unwrap_lora(model, tokenizer, path):
     tokenizer.save_pretrained(path)
 
 
+def auto_scale_config(config):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tc = config["training"]
+
+    if device.type == "cuda":
+        gpu_mem = torch.cuda.get_device_properties(0).total_mem / (1024 ** 3)
+        if gpu_mem >= 24:
+            tc["batch_size"] = min(tc["batch_size"] * 4, 32)
+            tc["num_epochs"] = max(tc["num_epochs"], 15)
+            print(f"  GPU: {gpu_mem:.0f}GB VRAM — scaling up (batch={tc['batch_size']}, epochs={tc['num_epochs']})")
+        elif gpu_mem >= 16:
+            tc["batch_size"] = min(tc["batch_size"] * 2, 16)
+            print(f"  GPU: {gpu_mem:.0f}GB VRAM — moderate scaling (batch={tc['batch_size']})")
+        elif gpu_mem >= 8:
+            print(f"  GPU: {gpu_mem:.0f}GB VRAM — using defaults")
+        else:
+            tc["batch_size"] = max(tc["batch_size"] // 2, 2)
+            print(f"  GPU: {gpu_mem:.0f}GB VRAM — scaling down (batch={tc['batch_size']})")
+    else:
+        tc["batch_size"] = max(tc["batch_size"] // 2, 2)
+        tc["num_epochs"] = min(tc["num_epochs"], 10)
+        tc["mixed_precision"] = "none"
+        print(f"  CPU mode — scaled down (batch={tc['batch_size']}, epochs={tc['num_epochs']}, no mixed precision)")
+
+    return config
+
+
 def train():
     config = load_config()
+    config = auto_scale_config(config)
     tc = config["training"]
     vc = config["validation"]
 

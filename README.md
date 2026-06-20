@@ -1,12 +1,14 @@
 # Tiny LoRA Tuner
 
-A beginner-friendly tool for fine-tuning GPT-2 using LoRA (Low-Rank Adaptation) on CPU. Includes a web UI, CLI training, and interactive chat.
+A beginner-friendly tool for fine-tuning GPT-2 using LoRA (Low-Rank Adaptation). Automatically scales to your hardware — works on Mac CPU, gaming GPUs, or beefy training rigs. Includes a web UI, CLI training, and interactive chat.
 
 ## What This Project Does
 
-Fine-tunes a GPT-2 language model on custom Q&A data using LoRA — a technique that trains only ~0.65% of the model's parameters (811K out of 125M), making it fast enough to run on a Mac with no GPU.
+Fine-tunes a GPT-2 language model on 50+ Q&A topics covering LoRA, transformers, attention, training concepts, and more. Uses LoRA to train only ~1% of the model's parameters, making it efficient on any hardware.
 
-**What you'll get:** A chatbot that answers questions about LLM concepts (LoRA, fine-tuning, attention, etc.).
+**Auto-scaling:** The app detects your GPU/CPU and adjusts batch size, epochs, and precision automatically. No manual tuning needed.
+
+**What you'll get:** A chatbot that answers questions about LLM/ML concepts with coherent, knowledgeable responses.
 
 ---
 
@@ -134,9 +136,10 @@ Done! Best loss: 4.3930
 ```
 
 **Key output:**
-- `trainable (0.65%)` — confirms LoRA is working (only tiny fraction trained)
+- `trainable (~1%)` — confirms LoRA is working (only tiny fraction trained)
+- `GPU: XX GB` or `CPU mode` — auto-scaling message
 - `Saved` — model saved to `output/best_model/`
-- Loss should decrease across epochs
+- Loss should decrease across epochs (target: <3.0 for decent quality)
 
 ### 3. CLI Chat
 
@@ -180,24 +183,39 @@ model:
   name: gpt2              # Base model (gpt2 = 124M params)
 
 lora:
-  r: 8                    # Rank (higher = more capacity, more memory)
-  alpha: 16               # Scaling factor
-  dropout: 0.1            # Regularization
+  r: 16                   # Rank (higher = more capacity, more memory)
+  alpha: 32               # Scaling factor (typically 2x rank)
+  dropout: 0.05           # Regularization
   target:
     - c_attn              # GPT-2 attention layer names
     - c_proj
 
 training:
-  learning_rate: 0.0003   # How fast the model learns
-  batch_size: 4           # Samples per training step
-  num_epochs: 5           # How many times to loop through data
+  learning_rate: 0.0002   # How fast the model learns
+  batch_size: 8           # Samples per training step
+  num_epochs: 10          # How many times to loop through data
   max_length: 512         # Max token length per example
 ```
 
-**Common changes:**
+### Auto-Scaling
+
+The app automatically detects your hardware and adjusts settings:
+
+| Hardware | Batch Size | Epochs | Mixed Precision | Notes |
+|----------|-----------|--------|-----------------|-------|
+| **GPU 24GB+** (A100, 4090) | 32 | 15+ | BF16 | Full speed |
+| **GPU 16GB** (3090, 4080) | 16 | 10 | BF16 | Great |
+| **GPU 8GB** (3060, 4060) | 8 | 10 | FP16 | Good |
+| **GPU <8GB** | 4 | 10 | FP16 | Reduced batch |
+| **CPU** (Mac, Linux) | 4 | 10 | None | Slow but works |
+
+Auto-scaling overrides `config.yaml` values at runtime. To force specific settings, set `batch_size` and `num_epochs` in the config.
+
+**Common manual changes:**
 - Training too slow? → Increase `batch_size` (needs more RAM)
-- Loss not decreasing? → Try `learning_rate: 0.001`
-- Overfitting? → Increase `dropout: 0.2` or reduce `num_epochs`
+- Loss not decreasing? → Try `learning_rate: 0.0001`
+- Overfitting? → Increase `dropout: 0.1` or reduce `num_epochs`
+- Better quality? → More training data + more epochs
 
 ---
 
@@ -282,6 +300,99 @@ python train.py
 4. Merge LoRA weights back into original GPT-2
 5. Save clean model to output/best_model/
 ```
+
+---
+
+## Deploy to Cloud
+
+The app is Docker-ready. Train and serve from any free cloud tier.
+
+### Option 1: Render (Easiest — Free Tier)
+
+1. Push to GitHub:
+```bash
+git add .
+git commit -m "add deployment files"
+git push
+```
+
+2. Go to [render.com](https://render.com), sign up, create a **New Web Service**
+3. Connect your GitHub repo
+4. Settings:
+   - **Runtime:** Docker
+   - **Instance Type:** Free
+   - **Port:** 7860
+5. Deploy — takes ~2 minutes
+
+### Option 2: Fly.io (Free Tier)
+
+```bash
+# Install flyctl
+brew install flyctl
+
+# Login
+fly auth login
+
+# Launch (from project root)
+fly launch
+
+# Deploy
+fly deploy
+```
+
+Free tier: 3 shared-cpu-1x VMs, 256MB RAM each.
+
+### Option 3: Railway (Free Tier)
+
+```bash
+# Install railway CLI
+npm install -g @railway/cli
+
+# Login
+railway login
+
+# Initialize
+railway init
+
+# Deploy
+railway up
+```
+
+Free tier: $5 credit/month (enough for this app).
+
+### Option 4: GCP Cloud Run (Free Tier)
+
+```bash
+# Install gcloud CLI
+brew install google-cloud-sdk
+
+# Auth
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+
+# Build and deploy
+gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/tiny-lora-tuner
+gcloud run deploy tiny-lora-tuner --image gcr.io/YOUR_PROJECT_ID/tiny-lora-tuner --port 7860 --allow-unauthenticated
+```
+
+Free tier: 180,000 vCPU-seconds, 360,000 GB-seconds per month.
+
+### Option 5: Docker locally
+
+```bash
+docker-compose up --build
+# Opens http://localhost:7860
+```
+
+### Model Size Warning
+
+The model is **478MB**. Most free tiers have storage/bandwidth limits:
+- **Render:** Free tier has 512MB disk — just fits
+- **Fly.io:** Free tier has 3GB volume — plenty
+- **Railway:** Depends on plan
+- **Cloud Run:** No persistent storage by default
+
+For production, consider pre-training locally and copying `output/best_model/` into the Docker image.
 
 ---
 

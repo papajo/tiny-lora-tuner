@@ -7,10 +7,11 @@ def chat():
     model = model.eval()
 
     print("Tiny LoRA Chat (type /exit to quit)\n")
-    while True:
-        user_input = input("You: ")
-        if user_input in ("/exit", "/quit"):
-            break
+    try:
+        while True:
+            user_input = input("You: ")
+            if user_input in ("/exit", "/quit"):
+                break
 
         prompt = f"### Instruction:\n{user_input}\n\n### Response:\n"
         inputs = tokenizer(prompt, return_tensors="pt")
@@ -26,6 +27,8 @@ def chat():
 
         response = tokenizer.decode(output[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip()
         print(f"Bot: {response}\n")
+    except KeyboardInterrupt:
+        print("\nBye!")
 
 
 if __name__ == "__main__":

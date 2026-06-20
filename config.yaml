@@ -2,18 +2,18 @@ model:
   name: gpt2
 
 lora:
-  r: 8
-  alpha: 16
-  dropout: 0.1
+  r: 16
+  alpha: 32
+  dropout: 0.05
   target:
     - c_attn
     - c_proj
 
 training:
-  learning_rate: 0.0003
-  batch_size: 4
+  learning_rate: 0.0002
+  batch_size: 8
   gradient_accumulation_steps: 2
-  num_epochs: 5
+  num_epochs: 10
   warmup_steps: 20
   weight_decay: 0.01
   gradient_clip: 1.0
