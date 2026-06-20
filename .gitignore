@@ -1,0 +1,21 @@
+# Virtual environment
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Model outputs
+output/
+
+# Training data (generated)
+data/tiny_conversations.json
+
+# OS files
+.DS_Store
+Thumbs.db
+__pycache__/
