@@ -1,9 +1,12 @@
 import os
+import sys
 import yaml
 import torch
 import gradio as gr
 import matplotlib
 import matplotlib.pyplot as plt
+
+sys.path.insert(0, os.path.dirname(__file__))
 
 matplotlib.use("Agg")
 

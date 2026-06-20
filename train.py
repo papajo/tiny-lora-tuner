@@ -1,3 +1,7 @@
+# PHASE 2 PREP: After training, merge LoRA weights back into GPT-2 and export.
+# See _save_model_unwrap_lora() for the merge logic.
+# Next: add generation quality eval, perplexity benchmarks, and comparison to full fine-tuning.
+
 import os
 import json
 import yaml
@@ -127,6 +131,11 @@ def train():
     model = AutoModelForCausalLM.from_pretrained(config["model"]["name"])
     model = inject_lora(model, config)
     model = model.to(device)
+
+    total = sum(p.numel() for p in model.parameters())
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    pct = trainable / total * 100
+    print(f"  Params: {total:,} total, {trainable:,} trainable ({pct:.2f}%)")
 
     if not os.path.exists("data/tiny_conversations.json"):
         from make_dataset import make_dataset

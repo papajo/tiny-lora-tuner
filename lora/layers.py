@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+# Only 0.24% of GPT-2's 124M params are trained — that's the LoRA advantage
 class LoRALayer(nn.Module):
     def __init__(self, orig, r: int = 8, alpha: int = 16, dropout: float = 0.1):
         super().__init__()
